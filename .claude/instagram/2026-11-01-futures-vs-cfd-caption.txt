@@ -1,0 +1,15 @@
+Commente FUTURES et je t'envoie la checklist pour passer des CFD au trading de futures.
+
+CFD ou futures : sur le papier, tu trades le même S&P 500. En vrai ? Pas le même produit.
+
+Un CFD, c'est un contrat avec ton broker. Souvent, il est en face de toi. Un future passe par une bourse réglementée, le CME, avec une chambre de compensation.
+
+Le volume aussi est réel. Chaque ordre. C'est ce qui rend l'order flow et le footprint possibles.
+
+Zéro frais de nuit. Et le micro S&P 500 (MES), c'est 5 dollars le point.
+
+Le revers : un contrat expire tous les 3 mois, et le levier reste un vrai risque.
+
+Ceci n'est pas un conseil en investissement. Le trading avec effet de levier peut te faire perdre plus que ta mise.
+
+#tradingfutures #orderflow #daytrading
