@@ -1,0 +1,12 @@
+70 % des comptes CFD perdent de l'argent.
+Les futures, c'est 3 différences.
+Un : sur un CFD, ton broker est souvent en face.
+Un future passe par le CME. Une vraie bourse.
+Deux : le vrai volume.
+Un CFD te montre les ticks de ton broker.
+Un future te montre le footprint et le delta.
+Trois : zéro frais de nuit.
+Pas de swap. Une commission fixe.
+Le micro S&P ? 5 dollars le point.
+Le piège : il expire tous les 3 mois.
+Commente FUTURES pour la checklist CFD vers futures.
