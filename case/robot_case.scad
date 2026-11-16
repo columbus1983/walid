@@ -3,7 +3,7 @@
 // ATTENTION : les cotes des composants ci-dessous sont des ESTIMATIONS.
 // Mesure tes pieces au pied a coulisse et corrige les parametres avant d'imprimer.
 
-part = "both";          // "front" | "back" | "both"
+part = "both";          // "front" | "back" | "both" | "assembled" | "section"
 
 // ---- Cotes des composants (mm) : A MESURER ----
 lcd_pcb_w   = 33;       // largeur du PCB de l'ecran
@@ -138,6 +138,18 @@ module back_cover() {
 
 if (part == "front") front_shell();
 if (part == "back")  back_cover();
+module assembled() {
+    color("#c8d84a") front_shell();
+    // couvercle retourne (rotation autour de Y) et pose sur la coque avant
+    color("#8fa31c") translate([0, 0, out_d]) rotate([0, 180, 0]) back_cover();
+}
+if (part == "assembled") assembled();
+// vue d'apercu : face avant vers le haut, haut du robot vers le haut de l'ecran
+if (part == "view") translate([0, 0, out_d]) rotate([0, 180, 0]) assembled();
+if (part == "section") difference() {   // coupe pour voir l'interieur
+    assembled();
+    translate([0, -100, -10]) cube([100, 200, 100]);
+}
 if (part == "both") {
     front_shell();
     translate([out_w + 10, 0, 0]) back_cover();
