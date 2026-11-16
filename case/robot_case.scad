@@ -9,8 +9,8 @@ part = "both";          // "front" | "back" | "both" | "assembled" | "section"
 lcd_pcb_w   = 33;       // largeur du PCB de l'ecran
 lcd_pcb_h   = 35;       // hauteur du PCB de l'ecran
 lcd_pcb_t   = 3.5;      // epaisseur PCB + dalle (sans connecteur)
-lcd_win_w   = 24;       // fenetre visible (zone active)
-lcd_win_h   = 24;
+lcd_win_w   = 26;       // fenetre visible (zone active ~23,4 mm + petit jeu : ne pas trop agrandir)
+lcd_win_h   = 26;
 lcd_win_dy  = 0;        // decalage vertical de la fenetre / centre du PCB
 
 spk_d       = 28;       // diametre du haut-parleur
@@ -27,17 +27,21 @@ usb_h       = 4;
 batt_l      = 35;       // batterie LiPo plate (ex. 502535) : longueur
 batt_w      = 25;       // largeur
 batt_t      = 5;        // epaisseur (prevoir +1 mm si elle gonfle)
-esp_y       = -22;      // position verticale de la carte ESP32 dans le couvercle
+esp_x       = -15.5;    // carte ESP32 placee verticalement (USB vers le bas), a gauche
+esp_y       = 0;
+spk_x       = 15.5;     // haut-parleur a droite
+spk_y       = 0;
+screen_cy   = 15;       // centre vertical de l'ecran sur la face avant
 esp_standoff = 3;       // hauteur des cales sous la carte
 
 // ---- Parametres du boitier ----
 wall   = 2.4;           // epaisseur des parois
 tol    = 0.4;           // jeu d'ajustement
 corner = 6;             // rayon des coins
-out_w  = 84;            // largeur exterieure
-out_h  = 80;            // hauteur exterieure
-out_d  = 44;            // profondeur exterieure totale
-front_d = 24;           // profondeur de la coque avant (le reste = couvercle arriere)
+out_w  = 68;            // largeur exterieure
+out_h  = 78;            // hauteur exterieure
+out_d  = 42;            // profondeur exterieure totale
+front_d = 20;           // profondeur de la coque avant (le reste = couvercle arriere)
 screw_d = 2.2;          // trou de vis M2.5 (taraudage direct dans le plastique)
 screw_post = 6;         // diametre des plots de vis
 $fn = 48;
@@ -71,21 +75,21 @@ module front_shell() {
         // cavite interieure (ouverte vers l'arriere)
         translate([0, 0, wall]) rrect(out_w - 2*wall, out_h - 2*wall, front_d, corner - wall/2);
         // fenetre de l'ecran
-        translate([-lcd_win_w/2, -lcd_win_h/2 + lcd_win_dy + 8, -1])
+        translate([-lcd_win_w/2, -lcd_win_h/2 + lcd_win_dy + screen_cy, -1])
             cube([lcd_win_w, lcd_win_h, wall + 2]);
-        // trou du micro (au-dessus de l'ecran)
-        translate([0, out_h/2 - 8, -1]) cylinder(d = mic_hole_d, h = wall + 2);
+        // trou du micro (sous l'ecran)
+        translate([0, screen_cy - lcd_pcb_h/2 - 6, -1]) cylinder(d = mic_hole_d, h = wall + 2);
         // trous de vis dans les plots
         for (p = posts()) translate([p[0], p[1], wall]) cylinder(d = screw_d, h = front_d);
     }
     // logement de l'ecran : cadre qui maintient le PCB contre la face avant
     difference() {
-        translate([-(lcd_pcb_w + 2*wall)/2, -(lcd_pcb_h + 2*wall)/2 + 8, wall])
+        translate([-(lcd_pcb_w + 2*wall)/2, -(lcd_pcb_h + 2*wall)/2 + screen_cy, wall])
             cube([lcd_pcb_w + 2*wall, lcd_pcb_h + 2*wall, lcd_pcb_t + 1.5]);
-        translate([-(lcd_pcb_w + tol)/2, -(lcd_pcb_h + tol)/2 + 8, wall - 0.01])
+        translate([-(lcd_pcb_w + tol)/2, -(lcd_pcb_h + tol)/2 + screen_cy, wall - 0.01])
             cube([lcd_pcb_w + tol, lcd_pcb_h + tol, lcd_pcb_t + 2]);
         // la fenetre reste percee
-        translate([-lcd_win_w/2, -lcd_win_h/2 + lcd_win_dy + 8, -1])
+        translate([-lcd_win_w/2, -lcd_win_h/2 + lcd_win_dy + screen_cy, -1])
             cube([lcd_win_w, lcd_win_h, wall + 5]);
     }
     battery_cradle();
@@ -97,30 +101,34 @@ module front_shell() {
         }
 }
 
-// Cales + butees qui maintiennent la carte ESP32 (USB vers +x). Ajoute un point de colle chaude.
+// Cales + butees qui maintiennent la carte ESP32, placee verticalement, USB vers le bas (-y).
+// Un point de colle chaude reste conseille. Dessin en repere local (USB vers +x), puis rotation.
 module esp_cradle() {
     L = esp_l + tol; W = esp_w + tol;
-    // 4 cales sous les coins
-    for (sx = [-1, 1], sy = [-1, 1])
-        translate([sx * (L/2 - 4) - 4, esp_y + sy * (W/2 - 4) - 4, wall - 0.01])
-            cube([8, 8, esp_standoff + 0.01]);
-    // butees laterales (les 2 cotes longs et l'extremite opposee a l'USB)
     h = esp_standoff + 5;
-    for (sy = [-1, 1])
-        translate([-L/2 + 6, esp_y + sy * (W/2 + 0.8) - 0.8, wall - 0.01]) cube([L - 12, 1.6, h]);
-    translate([-L/2 - 1.6, esp_y - 6, wall - 0.01]) cube([1.6, 12, h]);
+    translate([esp_x, esp_y, 0]) rotate(-90) {
+        // 4 cales sous la carte (rentrees pour ne pas boucher les trous de vis du fond)
+        for (sx = [-1, 1], sy = [-1, 1])
+            translate([sx * (L/2 - 8) - 3, sy * (W/2 - 5) - 3, wall - 0.01])
+                cube([6, 6, esp_standoff + 0.01]);
+        // butees sur les 2 cotes longs et a l'extremite opposee a l'USB
+        for (sy = [-1, 1])
+            translate([-L/2 + 6, sy * (W/2 + 0.8) - 0.8, wall - 0.01]) cube([L - 12, 1.6, h]);
+        translate([-L/2 - 1.6, -6, wall - 0.01]) cube([1.6, 12, h]);
+    }
 }
 
 module back_cover() {
     back_d = out_d - front_d;
+    ring_wall = 1.2;
     difference() {
         rrect(out_w, out_h, back_d, corner);
         translate([0, 0, wall]) rrect(out_w - 2*wall, out_h - 2*wall, back_d, corner - wall/2);
-        // ouverture USB-C : paroi laterale droite, face a l'extremite USB de la carte
-        translate([out_w/2 - wall - 1, esp_y - usb_w/2, wall + esp_standoff + 1.6 + 1.5 - (usb_h + 2)/2])
-            cube([wall + 2, usb_w, usb_h + 2]);
+        // ouverture USB-C : paroi du bas, face a l'extremite USB de la carte
+        translate([esp_x - usb_w/2, -out_h/2 - 1, wall + esp_standoff + 1.6 + 1.5 - (usb_h + 2)/2])
+            cube([usb_w, wall + 2, usb_h + 2]);
         // grille du haut-parleur au dos (anneaux de trous)
-        translate([0, 12, -1]) {
+        translate([spk_x, spk_y, -1]) {
             for (a = [0 : 45 : 315]) rotate(a) translate([spk_d/4, 0, 0]) cylinder(d = 2.2, h = wall + 2);
             for (a = [0 : 30 : 330]) rotate(a) translate([spk_d/2 - 3.5, 0, 0]) cylinder(d = 2.2, h = wall + 2);
             cylinder(d = 2.2, h = wall + 2);
@@ -130,8 +138,8 @@ module back_cover() {
     }
     esp_cradle();
     // anneau de maintien du haut-parleur
-    translate([0, 12, wall - 0.01]) difference() {
-        cylinder(d = spk_d + 2*wall + tol, h = min(spk_h + 1, back_d - wall));
+    translate([spk_x, spk_y, wall - 0.01]) difference() {
+        cylinder(d = spk_d + 2*ring_wall + tol, h = min(spk_h + 1, back_d - wall));
         translate([0, 0, -0.01]) cylinder(d = spk_d + tol, h = back_d);
     }
 }
