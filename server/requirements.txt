@@ -1,0 +1,3 @@
+anthropic
+websockets>=13
+httpx
