@@ -130,7 +130,7 @@ module back_cover() {
     }
     esp_cradle();
     // anneau de maintien du haut-parleur
-    translate([0, 12, wall]) difference() {
+    translate([0, 12, wall - 0.01]) difference() {
         cylinder(d = spk_d + 2*wall + tol, h = min(spk_h + 1, back_d - wall));
         translate([0, 0, -0.01]) cylinder(d = spk_d + tol, h = back_d);
     }
