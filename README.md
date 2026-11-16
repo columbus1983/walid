@@ -50,3 +50,6 @@ ESP32-S3 <--WebSocket (PCM16 16 kHz + états)------ server.py
 - L'écoute continue utilise une détection de voix simple par niveau sonore : elle peut réagir à un bruit fort (porte, musique) ou rater une voix basse. Le réglage de `VAD_MIN_RMS` est empirique. Le robot n'écoute pas pendant qu'il parle (pas d'interruption possible).
 - Coûts : STT, TTS et Claude sont facturés à l'usage.
 - Boîtier 3D et batterie : non inclus ici.
+
+## Boîtier 3D
+`case/robot_case.scad` (OpenSCAD) : coque avant + couvercle arrière, paramétrable. Les cotes des composants sont des estimations à corriger après mesure. Non rendu ni imprimé : voir les notes dans le fichier.
