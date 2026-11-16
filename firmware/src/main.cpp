@@ -59,15 +59,19 @@ void audioInit() {
   i2s_set_pin(SPK_PORT, &spkPins);
 }
 
-void sendMicChunk() {
+// Lit un bloc du micro en PCM16 ; renvoie le nombre d'echantillons et le niveau RMS.
+int readMic(int16_t *pcm, float &rms) {
   static int32_t raw[MIC_FRAMES];
-  static int16_t pcm[MIC_FRAMES];
   size_t got = 0;
-  i2s_read(MIC_PORT, raw, sizeof(raw), &got, 20 / portTICK_PERIOD_MS);
+  i2s_read(MIC_PORT, raw, sizeof(raw), &got, 40 / portTICK_PERIOD_MS);
   int n = got / 4;
-  if (n == 0) return;
-  for (int i = 0; i < n; i++) pcm[i] = (int16_t)(raw[i] >> 14);  // 24 bits -> 16 bits (+gain)
-  ws.sendBIN((uint8_t *)pcm, n * 2);
+  double sum = 0;
+  for (int i = 0; i < n; i++) {
+    pcm[i] = (int16_t)(raw[i] >> 14);  // 24 bits -> 16 bits (+gain)
+    sum += (double)pcm[i] * pcm[i];
+  }
+  rms = n ? sqrt(sum / n) : 0;
+  return n;
 }
 
 void playChunk(const uint8_t *data, size_t len) {
@@ -155,24 +159,73 @@ void setup() {
   ws.setReconnectInterval(2000);
 }
 
-void loop() {
-  ws.loop();
+// Ecoute continue : detection de voix par energie (RMS) + bruit ambiant adaptatif.
+#define PREROLL_CHUNKS 10      // ~320 ms gardes avant le debut de la voix
+#define END_SILENCE_MS 900     // silence qui termine la phrase
+#define MAX_RECORD_MS 15000
+#define IGNORE_AFTER_REPLY_MS 700  // evite d'ecouter l'echo de sa propre voix
 
+void listenLoop() {
+  static int16_t preroll[PREROLL_CHUNKS][MIC_FRAMES];
+  static int prHead = 0, prCount = 0, loudRun = 0;
+  static float noise = 300;
+  static uint32_t lastVoice = 0, recStart = 0, ignoreUntil = 0, lastLog = 0;
+  static State prevState = IDLE;
+  static int16_t buf[MIC_FRAMES];
+
+  uint32_t now = millis();
   bool pressed = digitalRead(PIN_BUTTON) == LOW;
-  if (pressed && !recording && wsConnected && state == IDLE) {
-    recording = true;
-    state = LISTENING;
+
+  // Retour a IDLE apres une reponse : on vide le micro et on attend un peu.
+  if (prevState != IDLE && state == IDLE) {
     i2s_zero_dma_buffer(MIC_PORT);
-    ws.sendTXT("start");
+    ignoreUntil = now + IGNORE_AFTER_REPLY_MS;
+    loudRun = 0;
+    prCount = 0;
   }
-  if (recording) {
-    sendMicChunk();
-    if (!pressed) {
+  prevState = state;
+
+  if (!wsConnected || (state != IDLE && !recording) || now < ignoreUntil) return;
+
+  float rms;
+  int n = readMic(buf, rms);
+  if (n == 0) return;
+  float thr = max((float)VAD_MIN_RMS, noise * 3.0f);
+
+  if (!recording) {
+    memcpy(preroll[prHead], buf, n * 2);
+    prHead = (prHead + 1) % PREROLL_CHUNKS;
+    if (prCount < PREROLL_CHUNKS) prCount++;
+    if (rms < thr) noise = 0.98f * noise + 0.02f * rms;
+    loudRun = rms > thr ? loudRun + 1 : 0;
+    if (now - lastLog > 500) {  // pour regler VAD_MIN_RMS
+      lastLog = now;
+      Serial.printf("rms=%.0f seuil=%.0f\n", rms, thr);
+    }
+    if (loudRun >= 3 || pressed) {
+      recording = true;
+      state = LISTENING;
+      recStart = lastVoice = now;
+      ws.sendTXT("start");
+      int first = (prHead - prCount + PREROLL_CHUNKS) % PREROLL_CHUNKS;
+      for (int k = 0; k < prCount; k++)
+        ws.sendBIN((uint8_t *)preroll[(first + k) % PREROLL_CHUNKS], MIC_FRAMES * 2);
+      prCount = 0;
+    }
+  } else {
+    ws.sendBIN((uint8_t *)buf, n * 2);
+    if (rms > thr || pressed) lastVoice = now;
+    if (now - lastVoice > END_SILENCE_MS || now - recStart > MAX_RECORD_MS) {
       recording = false;
       ws.sendTXT("end");
       state = THINKING;
     }
   }
+}
+
+void loop() {
+  ws.loop();
+  listenLoop();
 
   static uint32_t lastFrame = 0;
   if (millis() - lastFrame > 40) {  // ~25 images/s
